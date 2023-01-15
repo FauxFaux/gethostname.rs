@@ -65,10 +65,18 @@ fn gethostname_impl() -> OsString {
     // Get the maximum size of host names on this system, and account for the
     // trailing NUL byte.
     let hostname_max = unsafe { sysconf(_SC_HOST_NAME_MAX) };
-    let mut buffer = vec![0; (hostname_max as usize) + 1];
+    let Ok(hostname_max) = usize::try_from(hostname_max) else {
+        // There are no reasonable failures, so let's panic
+        panic!(
+            "sysconf(HOST_NAME_MAX) failed with {hostname_max}: {}
+    Please report an issue to <https://github.com/swsnr/gethostname.rs/issues>!",
+            std::io::Error::last_os_error()
+        );
+    };
+    let mut buffer = vec![0; hostname_max + 1];
     let returncode = unsafe { libc::gethostname(buffer.as_mut_ptr() as *mut c_char, buffer.len()) };
     if returncode != 0 {
-        // There are no reasonable failures, so lets panic
+        // There are no reasonable failures, so let's panic
         panic!(
             "gethostname failed: {}
     Please report an issue to <https://github.com/swsnr/gethostname.rs/issues>!",
